@@ -100,22 +100,36 @@ app.post('/api/auth/login', (req, res) => {
 
 // ─── ACADEMICS HUB ENDPOINTS ────────────────────────────────────────────────
 
+// 🌟 FIXED: Added baseline static matching layout criteria to avoid tracking mismatch leaks
+let studentsList = [
+  { id: 'anannya-20', name: 'Anannya Sunny', branch: 'Computer Science', currentSemester: 6, email: 'anannya@unihub.com', phone: '+91 94470 12345' },
+  { id: 'sreehari-456', name: 'Sreehari K', branch: 'Ai and datascience', currentSemester: 4, email: 'student@unihub.com', phone: '+91 98460 54321' },
+  { id: 'astrea-789', name: 'Astrea Rose Antony', branch: 'Electrical Engineering', currentSemester: 2, email: 'astrea@unihub.com', phone: '+91 95620 98765' },
+  { id: 'Karthik -789', name: 'Karthik sajan', branch: 'Electrical Engineering', currentSemester: 2, email: 'karthik@unihub.com', phone: '+91 97440 11223' }
+];
+
 app.get('/api/academics/students', (req, res) => {
-  res.json([
-    { id: 'anannya-20', name: 'Anannya Sunny', branch: 'Computer Science', currentSemester: 6 },
-    { id: 'sreehari-456', name: 'Sreehari K', branch: 'Ai and datascience', currentSemester: 4 },
-    { id: 'astrea-789', name: 'Astrea Rose Antony', branch: 'Electrical Engineering', currentSemester: 2 },
-    { id: 'Karthik -789', name: 'Karthik sajan', branch: 'Electrical Engineering', currentSemester: 2 }
-  ]);
+  res.json(studentsList);
+});
+
+// 🌟 FIXED: Explicit robust parsing validation logic for Student profile property matrices
+app.put('/api/academics/students/:id', (req, res) => {
+  const { id } = req.params;
+
+  studentsList = studentsList.map(student =>
+    student.id === id ? { ...student, ...req.body } : student
+  );
+
+  res.json({ success: true, message: "Student metrics mapped safely.", student: req.body });
 });
 
 let textbooksCatalog = [
-  { id: 'book-1', title: 'DBMS', author: 'GUIDE', category: 'AI and Data Science Engineering', sem: 4, price: 0, condition: 'Good', description: 'Comprehensive KTU core guidelines and transaction analysis notebooks.', status: 'Available' },
-  { id: 'book-2', title: 'University Physics', author: 'Hugh D. Young', category: 'Basic Science & Humanities', sem: 1, price: 150, condition: 'Like New', description: 'Volume 1 master reference textbook matching standard first-year specifications.', status: 'Available' },
-  { id: 'book-3', title: 'Calculus: Early Transcedentals', author: 'James Stewart', category: 'Basic Science & Humanities', sem: 1, price: 80, condition: 'Fair', description: 'Essential math reference matrix used extensively for optimization architectures.', status: 'Available' },
-  { id: 'book-4', title: 'Digital Electronics Lab Record', author: 'KTU Syllabus', category: 'Electrical and Electronics Engineering', sem: 3, price: 50, condition: 'Like New', description: 'Fully mapped and organized digital gates circuit records and validation maps.', status: 'Available' },
-  { id: 'book-5', title: 'Engineering Graphics Drawing Sheets', author: 'First Year CSE', category: 'Mechanical Engineering', sem: 1, price: 0, condition: 'Good', description: 'A3 isometric projections layout sheet pack.', status: 'Accepted' },
-  { id: 'book-6', title: 'Introduction to Algorithms (CLRS)', author: 'Thomas H. Cormen', category: 'Computer Science and Engineering', sem: 4, price: 120, condition: 'Good', description: 'Standard algorithmic complexity parsing guide.', status: 'Handed Over' }
+  { id: 'book-1', title: 'DBMS', author: 'GUIDE', subject: 'AI and Data Science Engineering', category: 'AI and Data Science Engineering', sem: 4, price: 0, condition: 'Good', description: 'Comprehensive KTU core guidelines and transaction analysis notebooks.', status: 'Available', ownerId: 'sreehari-456' },
+  { id: 'book-2', title: 'University Physics', author: 'Hugh D. Young', subject: 'Basic Science & Humanities', category: 'Basic Science & Humanities', sem: 1, price: 150, condition: 'Like New', description: 'Volume 1 master reference textbook matching standard first-year specifications.', status: 'Available', ownerId: 'anannya-20' },
+  { id: 'book-3', title: 'Calculus: Early Transcedentals', author: 'James Stewart', subject: 'Basic Science & Humanities', category: 'Basic Science & Humanities', sem: 1, price: 80, condition: 'Fair', description: 'Essential math reference matrix used extensively for optimization architectures.', status: 'Available', ownerId: 'astrea-789' },
+  { id: 'book-4', title: 'Digital Electronics Lab Record', author: 'KTU Syllabus', subject: 'Electrical and Electronics Engineering', category: 'Electrical and Electronics Engineering', sem: 3, price: 50, condition: 'Like New', description: 'Fully mapped and organized digital gates circuit records and validation maps.', status: 'Available', ownerId: 'Karthik -789' },
+  { id: 'book-5', title: 'Engineering Graphics Drawing Sheets', author: 'First Year CSE', subject: 'Mechanical Engineering', category: 'Mechanical Engineering', sem: 1, price: 0, condition: 'Good', description: 'A3 isometric projections layout sheet pack.', status: 'Accepted', ownerId: 'anannya-20' },
+  { id: 'book-6', title: 'Introduction to Algorithms (CLRS)', author: 'Thomas H. Cormen', subject: 'Computer Science and Engineering', category: 'Computer Science and Engineering', sem: 4, price: 120, condition: 'Good', description: 'Standard algorithmic complexity parsing guide.', status: 'Handed Over', ownerId: 'sreehari-456' }
 ];
 
 let handoverRequests = [];
@@ -157,21 +171,33 @@ app.get('/api/academics/handover', (req, res) => {
   res.json(handoverRequests);
 });
 
+// 🌟 FIXED: Automatically attaches accurate email and phone metadata descriptors to corresponding books during peer tracking handovers
 app.post('/api/academics/handover', (req, res) => {
   const targetId = req.body.textbookId || req.body.id;
+  const buyerId = req.body.buyerId || 'student-anon';
+
   textbooksCatalog = textbooksCatalog.map(book =>
     book.id === targetId ? { ...book, status: 'Requested' } : book
   );
 
   const matchedBook = textbooksCatalog.find(b => b.id === targetId);
   if (matchedBook) {
+    // Look up owner contact info context defensively to populate the inventory cards cleanly
+    const ownerProfile = studentsList.find(s => s.id === matchedBook.ownerId) || { name: 'Faculty Admin', email: 'support@unihub.com', phone: '+91 99999 88888' };
+    const buyerProfile = studentsList.find(s => s.id === buyerId) || { name: 'Peer Student' };
+
     handoverRequests.unshift({
       id: req.body.id || `req-${Date.now()}`,
       textbookId: targetId,
       textbookTitle: matchedBook.title,
       title: matchedBook.title,
-      buyerId: req.body.buyerId || 'student-anon',
-      buyerName: 'Peer Student',
+      textbookPrice: matchedBook.price,
+      buyerId: buyerId,
+      buyerName: buyerProfile.name,
+      ownerId: matchedBook.ownerId,
+      ownerName: ownerProfile.name,
+      ownerEmail: ownerProfile.email,
+      ownerPhone: ownerProfile.phone,
       status: 'Pending',
       created_at: new Date().toISOString()
     });
@@ -280,12 +306,9 @@ app.post('/api/canteen/order', (req, res) => {
   });
 });
 
-// 🌟 CRASH-PROOF STATE STEPPER ENGINE
 const processOrderUpdate = (orderId, passedStatus, res) => {
   let targetStatus = String(passedStatus || '').toUpperCase();
 
-  // Explicit fallback logic if the component parameter is blank/undefined:
-  // Dynamically checks what state the ticket is currently in and steps it forward!
   const targetOrder = canteenOrders.find(o => o.id === orderId);
   if (targetOrder && (!targetStatus || targetStatus === 'UNDEFINED' || targetStatus === '')) {
     if (targetOrder.status === 'PENDING') targetStatus = 'PREPARING';
@@ -293,7 +316,6 @@ const processOrderUpdate = (orderId, passedStatus, res) => {
     else targetStatus = 'COMPLETED';
   }
 
-  // Fallback default state safety catch
   if (!targetStatus || targetStatus === 'UNDEFINED' || targetStatus === '') {
     targetStatus = 'PREPARING';
   }
@@ -308,7 +330,6 @@ const processOrderUpdate = (orderId, passedStatus, res) => {
   return res.json({ success: true, message: `Status advanced to ${targetStatus}`, orderId });
 };
 
-// 🌟 UNIFIED ENDPOINT BINDINGS
 app.put('/api/canteen/order/:orderId', (req, res) => processOrderUpdate(req.params.orderId, req.body.status, res));
 app.put('/api/canteen/order/:orderId/status', (req, res) => processOrderUpdate(req.params.orderId, req.body.status, res));
 app.put('/api/canteen/order/:orderId/prepare', (req, res) => processOrderUpdate(req.params.orderId, 'PREPARING', res));

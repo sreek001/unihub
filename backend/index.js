@@ -9,7 +9,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173',                  // Local frontend vite dev cluster
   'https://unihub-platform.vercel.app',    // Production Vercel domain
-  'https://unihub-platform-qbs0deejw-ksreehari84m-3947s-projects.vercel.app'// Vercel Preview Pipeline
+  'https://unihub-platform-qbs0deejw-ksreehari84m-3947s-projects.vercel.app',// Vercel Preview Pipeline
   ' https://unihub-backend-ydek.onrender.com'
 ];
 

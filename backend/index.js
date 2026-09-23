@@ -1,22 +1,33 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const db = require('./src/db');
+
+let db;
+try {
+  db = require('./src/db');
+} catch (e) {
+  console.warn("⚠️ Database module not loaded, continuing in memory mode.");
+}
 
 const app = express();
 
-// ─── DYNAMIC CORS CONFIGURATION (Enforces Deployed Vercel Domain Clearances) ───
+// ─── DYNAMIC CORS CONFIGURATION ───
 const allowedOrigins = [
-  'http://localhost:5173',                  // Local frontend vite dev cluster
-  'https://unihub-platform.vercel.app',    // Production Vercel domain
-  'https://unihub-platform-qbs0deejw-ksreehari84m-3947s-projects.vercel.app',// Vercel Preview Pipeline
-  ' https://unihub-backend-ydek.onrender.com'
+  'http://localhost:5173',
+  'https://unihub-platform.vercel.app',
+  'https://unihub-platform-qbs0deejw-ksreehari84m-3947s-projects.vercel.app',
+  'https://unihub-backend-ydek.onrender.com',
+  'https://unihub-frontend.onrender.com'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.onrender.com')
+    ) {
       return callback(null, true);
     } else {
       return callback(new Error('Not allowed by CORS'));
@@ -31,26 +42,36 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 4000;
 
-// ─── DATABASE MIGRATION LOGIC LOOP ───────────────────────────────────────────
+// ─── NON-BLOCKING DATABASE MIGRATION WITH TIMEOUT ───
 async function initializeDatabase() {
+  if (!db || typeof db.query !== 'function') {
+    console.log("ℹ️ No SQL database instance available. Running in cloud-memory mode.");
+    return;
+  }
   console.log("Setting up Auth schema (users table + roles)...");
   try {
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS print_jobs (
-        id SERIAL PRIMARY KEY,
-        filename TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Database connection timed out")), 3000)
+    );
+    await Promise.race([
+      db.query(`
+        CREATE TABLE IF NOT EXISTS print_jobs (
+          id SERIAL PRIMARY KEY,
+          filename TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `),
+      timeoutPromise
+    ]);
     console.log("📦 Database check: 'print_jobs' table is ready (PostgreSQL cloud matrix).");
     console.log("✅ Database initialization completed successfully!");
   } catch (err) {
-    console.error("❌ SQL Migration failed globally:", err.message);
+    console.warn("⚠️ SQL Migration skipped/failed:", err.message);
   }
 }
 
-// ─── PLATFORM SYSTEM HANDSHAKES ─────────────────────────────────────────────
+// ─── PLATFORM SYSTEM HANDSHAKES ───
 
 app.get('/api/status', (req, res) => {
   res.json({ status: 'healthy', database: 'connected' });
@@ -99,9 +120,8 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-// ─── ACADEMICS HUB ENDPOINTS ────────────────────────────────────────────────
+// ─── ACADEMICS HUB ENDPOINTS ───
 
-// 🌟 FIXED: Added baseline static matching layout criteria to avoid tracking mismatch leaks
 let studentsList = [
   { id: 'anannya-20', name: 'Anannya Sunny', branch: 'Computer Science', currentSemester: 6, email: 'anannya@unihub.com', phone: '+91 94470 12345' },
   { id: 'sreehari-456', name: 'Sreehari K', branch: 'Ai and datascience', currentSemester: 4, email: 'student@unihub.com', phone: '+91 98460 54321' },
@@ -113,14 +133,11 @@ app.get('/api/academics/students', (req, res) => {
   res.json(studentsList);
 });
 
-// 🌟 FIXED: Explicit robust parsing validation logic for Student profile property matrices
 app.put('/api/academics/students/:id', (req, res) => {
   const { id } = req.params;
-
   studentsList = studentsList.map(student =>
     student.id === id ? { ...student, ...req.body } : student
   );
-
   res.json({ success: true, message: "Student metrics mapped safely.", student: req.body });
 });
 
@@ -172,7 +189,6 @@ app.get('/api/academics/handover', (req, res) => {
   res.json(handoverRequests);
 });
 
-// 🌟 FIXED: Automatically attaches accurate email and phone metadata descriptors to corresponding books during peer tracking handovers
 app.post('/api/academics/handover', (req, res) => {
   const targetId = req.body.textbookId || req.body.id;
   const buyerId = req.body.buyerId || 'student-anon';
@@ -183,7 +199,6 @@ app.post('/api/academics/handover', (req, res) => {
 
   const matchedBook = textbooksCatalog.find(b => b.id === targetId);
   if (matchedBook) {
-    // Look up owner contact info context defensively to populate the inventory cards cleanly
     const ownerProfile = studentsList.find(s => s.id === matchedBook.ownerId) || { name: 'Faculty Admin', email: 'support@unihub.com', phone: '+91 99999 88888' };
     const buyerProfile = studentsList.find(s => s.id === buyerId) || { name: 'Peer Student' };
 
@@ -242,7 +257,7 @@ app.post('/api/academics/upload', (req, res) => {
   res.json({ success: true, fileUrl: "https://unihub-cdn.s3.amazonaws.com/simulated-document.pdf" });
 });
 
-// ─── CANTEEN PLATFORM MODULE ───────────────────────────────────────────────
+// ─── CANTEEN PLATFORM MODULE ───
 
 let canteenMenu = [
   { id: '10', name: 'porotta', price: 10.00, category: 'snacks', description: 'kerala dish', available: true },
@@ -351,8 +366,8 @@ app.get('/api/print/history', (req, res) => {
   res.json([]);
 });
 
-// ─── INITIALIZATION STACKS ──────────────────────────────────────────────────
-app.listen(PORT, async () => {
-  await initializeDatabase();
+// ─── INSTANT SERVER BINDING ON 0.0.0.0 ───────────────────────────────────────
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Fully Synced Production Server operational on Port ${PORT}`);
+  initializeDatabase();
 });
